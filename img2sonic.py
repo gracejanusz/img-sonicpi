@@ -234,13 +234,26 @@ def decide(f):
 
     kick, snare, hat, drum_label = drums(a)
     crisp = sharp >= 0.55
+
+    # Bass: a :dsaw note on every kick (plus the off-beats when the image is busy),
+    # each held until the next one. No kick -> one long note per bar.
+    hits = sorted({i for i, k in enumerate(kick) if k} | ({2, 6, 10, 14} if a >= 0.72 else set()))
+    bass = [0] * 16
+    if not hits:
+        bass[0] = 16
+    for j, i in enumerate(hits):
+        bass[i] = (hits[j + 1] if j + 1 < len(hits) else 16) - i
     return {
         "feeling": feeling, "scale": scale, "root_pc": PITCH[root], "pad": pad, "lead": lead,
         "bpm": bpm, "prog": prog, "melody": melody, "holds": holds,
         "kick": kick, "snare": snare, "hat": hat, "drum_label": drum_label,
-        "kick_s": "bd_tek" if sharp >= 0.8 else "bd_haus" if crisp else "bd_fat",
+        "kick_s": "bd_klub" if crisp else "bd_fat",
         "snare_s": "sn_dolf" if crisp else "drum_snare_soft",
         "hat_s": "drum_cymbal_closed" if crisp else "drum_cymbal_soft",
+        "bass": bass,
+        "bass_amp": round(0.35 + 0.25 * a, 2),
+        "bass_lpf": round(68 + 30 * f["brightness"] + 12 * sharp),
+        "kick_on": any(kick), "snare_on": any(snare), "hat_on": any(hat),
         "drum_amp": round(0.35 + 0.75 * a, 2),
         "drum_lpf": round(75 + 55 * sharp),
         "low": f["brightness"] < 0.35,
@@ -295,6 +308,10 @@ def scene_name(path, taken):
     return name
 
 
+def rb(v):
+    return "true" if v else "false"
+
+
 def ring(values):
     return "(ring " + ", ".join("nil" if v is None else str(v) for v in values) + ")"
 
@@ -315,16 +332,19 @@ end
 # pads + melody (+ drone)
 define :scene_tune do |s, bars = 8, fade_in = 0, fade_out = 0|
   use_bpm s[:bpm]
-  use_random_seed s[:seed]
+  use_random_seed s[:seed] + get(:take).to_i
+  c     = s[:chaos]
   root  = note(s[:root])
-  notes = scale(root + 12, s[:mode], num_octaves: 2)
+  notes = scale(root + 12, s[:mode], num_octaves: 3)
   with_fx :level, amp: (fade_in > 0 ? 0 : 1) do |vol|
     with_fx :reverb, room: s[:room], mix: s[:reverb] do
       in_thread do  # harmony - colour mood
         bars.times do |b|
-          synth s[:pad], notes: chord_degree(s[:chords][b], root, s[:mode], 3),
+          ch = chord_degree(s[:chords][b], root, s[:mode], 3)
+          ch = invert_chord(ch, [1, -1].choose) if rand < c * 0.6  # random voicing
+          synth s[:pad], notes: ch,
             attack: s[:pad_attack], sustain: [3.5 - s[:pad_attack], 0.5].max, release: 2,
-            cutoff: s[:cutoff], amp: 0.6
+            cutoff: s[:cutoff] + rrand(-10, 10) * c, amp: 0.6
           sleep 4
         end
       end
@@ -332,7 +352,10 @@ define :scene_tune do |s, bars = 8, fade_in = 0, fade_out = 0|
         with_fx :lpf, cutoff: s[:lead_lpf] do
           (bars * 8).times do |i|
             if s[:holds][i] > 0
-              synth s[:lead], note: notes[s[:steps][i]], attack: s[:lead_attack],
+              d = s[:steps][i]
+              d = [d + [-1, 1].choose, 0].max if rand < c * 0.4  # wander to a neighbour
+              d += 7 if rand < c * 0.12                          # jump up an octave
+              synth s[:lead], note: notes[d], attack: s[:lead_attack],
                 sustain: s[:holds][i] * 0.5 - s[:lead_attack], release: s[:lead_release],
                 amp: s[:lead_amp] * rrand(0.8, 1), pan: rrand(-0.4, 0.4)
             end
@@ -354,21 +377,58 @@ define :scene_tune do |s, bars = 8, fade_in = 0, fade_out = 0|
 end
 
 # percussion. part = :high (hats), :mid (snare), :low (kick) or :all
+# The :dsaw bass rides with the kick (part :low), so it hands over with it.
 define :scene_drums do |s, part = :all, bars = 8, fade_in = 0, fade_out = 0|
   use_bpm s[:bpm]
-  use_random_seed s[:seed]
+  use_random_seed s[:seed] + get(:take).to_i
+  c   = s[:chaos]
+  low = (part == :all || part == :low)
+  mid = (part == :all || part == :mid)
+  hi  = (part == :all || part == :high)
   with_fx :level, amp: (fade_in > 0 ? 0 : 1) do |vol|
     with_fx :lpf, cutoff: s[:drum_lpf] do
       in_thread do
         (bars * 16).times do |i|
-          if (part == :all || part == :low) && s[:kick][i] > 0
-            sample s[:kick_s], amp: s[:drum_amp]
+          fill = (i % 64) >= 60 && rand < c  # end of every 4th bar: maybe a fill
+          if low
+            if s[:kick][i] > 0
+              sample s[:kick_s], amp: s[:drum_amp] unless i % 16 > 0 && rand < c * 0.1
+            elsif s[:kick_on] && rand < c * 0.06
+              sample s[:kick_s], amp: s[:drum_amp] * 0.6       # stray kick
+            end
           end
-          if (part == :all || part == :mid) && s[:snare][i] > 0
-            sample s[:snare_s], amp: s[:drum_amp] * (s[:snare][i] == 2 ? 0.9 : 0.35)
+          if mid
+            if s[:snare][i] > 0
+              sample s[:snare_s], amp: s[:drum_amp] * (s[:snare][i] == 2 ? 0.9 : 0.35)
+            elsif s[:snare_on] && (fill || rand < c * 0.08)
+              sample s[:snare_s], amp: s[:drum_amp] * rrand(0.15, 0.4)  # ghost note / fill
+            end
           end
-          if (part == :all || part == :high) && s[:hat][i] > 0
-            sample s[:hat_s], amp: s[:drum_amp] * 0.5 * rrand(0.6, 1), finish: 0.2
+          if hi
+            if s[:hat][i] > 0 ? rand > c * 0.25 : (s[:hat_on] && rand < c * 0.15)
+              sample s[:hat_s], amp: s[:drum_amp] * 0.5 * rrand(0.5, 1), finish: 0.2,
+                rate: 1 + rrand(-0.06, 0.06) * c, pan: rrand(-0.3, 0.3) * c
+            end
+          end
+          sleep 0.25
+        end
+      end
+    end
+    if low
+      in_thread do  # bassline - chord roots, held until the next hit
+        root = note(s[:root]) - 12
+        (bars * 16).times do |i|
+          tri = chord_degree(s[:chords][i / 16], root, s[:mode], 3)
+          len = s[:bass][i]
+          if len > 0
+            n = rand < c * 0.35 ? [tri[2], tri[0] + 12].choose : tri[0]
+            synth :dsaw, note: n, attack: (len >= 8 ? 0.6 : 0.01),
+              sustain: [len * 0.25 - 0.2, 0.05].max, release: (len >= 8 ? 1 : 0.15),
+              detune: 0.1 + rrand(0, 0.15) * c, cutoff: s[:bass_lpf] + rrand(-10, 10) * c,
+              amp: s[:bass_amp] * rrand(0.85, 1)
+          elsif s[:kick_on] && i.odd? && rand < c * 0.1  # passing 16th
+            synth :dsaw, note: [tri[0], tri[2]].choose + [0, 12].choose, sustain: 0.05,
+              release: 0.1, cutoff: s[:bass_lpf], amp: s[:bass_amp] * 0.6
           end
           sleep 0.25
         end
@@ -419,7 +479,11 @@ def render_scene(name, f, m):
         f"    snare: {ring(m['snare'])},",
         f"    hat:   {ring(m['hat'])},",
         f"    kick_s: :{m['kick_s']}, snare_s: :{m['snare_s']}, hat_s: :{m['hat_s']},",
-        f"    drum_amp: {m['drum_amp']}, drum_lpf: {m['drum_lpf']}",
+        f"    drum_amp: {m['drum_amp']}, drum_lpf: {m['drum_lpf']},",
+        f"    kick_on: {rb(m['kick_on'])}, snare_on: {rb(m['snare_on'])}, hat_on: {rb(m['hat_on'])},",
+        f"    bass: {ring(m['bass'])},  # steps each bass note is held",
+        f"    bass_amp: {m['bass_amp']}, bass_lpf: {m['bass_lpf']},",
+        f"    chaos: {m['chaos']}  # 0 = plays exactly as written, 1 = very loose",
         f"  }}, bars, step, last)",
         f"end",
     ]
@@ -428,7 +492,7 @@ def render_scene(name, f, m):
 
 def render_single(name, block):
     return (f"{ENGINE}\n{block}\n\n# Loop this image on its own. Change the 8 to play longer phrases.\n"
-            f"live_loop :play_{name} do\n  {name} 8\nend\n")
+            f"live_loop :play_{name} do\n  set :take, tick  # a new random take every pass\n  {name} 8\nend\n")
 
 
 def arc_order(scenes):
@@ -477,6 +541,7 @@ def render_set(scenes, bars, step, key_name, order):
         "# and kick switch one step apart). Reorder, repeat or delete lines to",
         "# reshape the set; keep `true` on the last line so the ending strips back.",
         f"use_bpm {bpm}",
+        "set :take, 0  # change this number for a different random take of the whole set",
         "",
     ]
     width = max(len(s["name"]) for s in scenes)
@@ -498,6 +563,9 @@ def main():
                     help="tempo for every scene (default: the median of what the images suggest)")
     ap.add_argument("--order", choices=("arc", "given"), default="arc",
                     help="set order: energy arc (default) or the order given on the command line")
+    ap.add_argument("--chaos", type=float, default=0.35,
+                    help="randomness 0..1: wandering melody, ghost notes, fills, bass variations "
+                         "(default 0.35)")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
@@ -509,6 +577,7 @@ def main():
             print(f"skip {path}: {e}", file=sys.stderr)
             continue
         scenes.append({"name": scene_name(path, taken), "f": f, "m": decide(f)})
+        scenes[-1]["m"]["chaos"] = round(max(0.0, min(1.0, args.chaos)), 2)
     if not scenes:
         sys.exit("no readable images")
 
