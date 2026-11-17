@@ -87,30 +87,30 @@ define :play_scene do |s, bars = 8, step = 0, last = false|
   sleep bars * 4
 end
 
-# ── LINE.jpg ────────────────────────────────────────────────────
-# colour : white 69%, green 22%, black 8%
-#          green leads -> nature, balance, growth -> G major
-# lines  : sharpness 1.00, density 1.00 -> percussion: very active
-# light  : brightness 0.85, saturation 0.09
-define :scene_line do |bars = 8, step = 0, last = false|
+# ── scream-blurr.JPG ────────────────────────────────────────────
+# colour : blue 47%, gray 19%, black 17%, purple 7%
+#          blue leads -> calm, depth, melancholy -> E minor
+# lines  : sharpness 0.27, density 0.01 -> percussion: a soft pulse
+# light  : brightness 0.38, saturation 0.27
+define :scene_scream_blurr do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 5106, root: :g3, mode: :major,
-    room: 0.6, reverb: 0.4,
-    pad: :hollow, pad_attack: 0.6, cutoff: 96,
-    chords: (ring :i, :iv, :i, :v),
-    lead: :sine, lead_attack: 0.12, lead_release: 0.8,
-    lead_lpf: 94, lead_amp: 0.29, drone: false,
-    steps: (ring 0, 0, 0, 0, 0, 5, 5, 5, 5, 7, 8, 7, 8, 8, 0, 0),
-    holds: (ring 0, 0, 0, 0, 0, 4, 0, 0, 0, 1, 1, 1, 2, 0, 0, 0),  # steps each note is held, 0 = rest
-    kick:  (ring 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0),
-    snare: (ring 0, 0, 0, 0, 2, 0, 0, 1, 0, 1, 0, 0, 2, 0, 1, 0),
-    hat:   (ring 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-    kick_s: :bd_tek, snare_s: :sn_dolf, hat_s: :drum_cymbal_closed,
-    drum_amp: 1.1, drum_lpf: 130
+    bpm: 84, seed: 97050, root: :e3, mode: :minor,
+    room: 0.85, reverb: 0.69,
+    pad: :hollow, pad_attack: 1.98, cutoff: 77,
+    chords: (ring :i, :vii, :iv, :i),
+    lead: :tri, lead_attack: 0.34, lead_release: 1.82,
+    lead_lpf: 82, lead_amp: 0.26, drone: true,
+    steps: (ring 0, 0, 0, 0, 2, 4, 6, 7, 10, 6, 3, 0, 0, 0, 0, 0),
+    holds: (ring 0, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0),  # steps each note is held, 0 = rest
+    kick:  (ring 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    snare: (ring 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    hat:   (ring 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    kick_s: :bd_fat, snare_s: :drum_snare_soft, hat_s: :drum_cymbal_soft,
+    drum_amp: 0.48, drum_lpf: 90
   }, bars, step, last)
 end
 
 # Loop this image on its own. Change the 8 to play longer phrases.
-live_loop :play_scene_line do
-  scene_line 8
+live_loop :play_scene_scream_blurr do
+  scene_scream_blurr 8
 end

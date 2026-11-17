@@ -87,30 +87,30 @@ define :play_scene do |s, bars = 8, step = 0, last = false|
   sleep bars * 4
 end
 
-# ── IMG_5070.JPG ────────────────────────────────────────────────
-# colour : blue 47%, gray 19%, black 17%, purple 7%
-#          blue leads -> calm, depth, melancholy -> E minor
-# lines  : sharpness 0.27, density 0.01 -> percussion: a soft pulse
-# light  : brightness 0.38, saturation 0.27
-define :scene_img_5070 do |bars = 8, step = 0, last = false|
+# ── cicado.jpeg ─────────────────────────────────────────────────
+# colour : green 35%, blue 34%, pink 8%, yellow 7%
+#          green leads -> nature, balance, growth -> G major
+# lines  : sharpness 0.85, density 1.00 -> percussion: busy, syncopated
+# light  : brightness 0.52, saturation 0.88
+define :scene_cicado do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 380, root: :e3, mode: :minor,
-    room: 0.85, reverb: 0.69,
-    pad: :hollow, pad_attack: 1.98, cutoff: 77,
-    chords: (ring :i, :vii, :iv, :i),
-    lead: :tri, lead_attack: 0.34, lead_release: 1.82,
-    lead_lpf: 82, lead_amp: 0.26, drone: true,
-    steps: (ring 0, 0, 0, 0, 2, 4, 6, 7, 10, 6, 3, 0, 0, 0, 0, 0),
-    holds: (ring 0, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0),  # steps each note is held, 0 = rest
-    kick:  (ring 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-    snare: (ring 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-    hat:   (ring 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-    kick_s: :bd_fat, snare_s: :drum_snare_soft, hat_s: :drum_cymbal_soft,
-    drum_amp: 0.48, drum_lpf: 90
+    bpm: 84, seed: 60569, root: :g3, mode: :major,
+    room: 0.65, reverb: 0.46,
+    pad: :hollow, pad_attack: 0.88, cutoff: 83,
+    chords: (ring :i, :iv, :i, :v),
+    lead: :sine, lead_attack: 0.16, lead_release: 1.01,
+    lead_lpf: 86, lead_amp: 0.41, drone: false,
+    steps: (ring 9, 9, 7, 0, 4, 1, 0, 7, 0, 5, 4, 4, 0, 0, 8, 9),
+    holds: (ring 2, 0, 1, 1, 1, 1, 0, 1, 0, 1, 2, 0, 2, 0, 1, 1),  # steps each note is held, 0 = rest
+    kick:  (ring 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0),
+    snare: (ring 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0),
+    hat:   (ring 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1),
+    kick_s: :bd_tek, snare_s: :sn_dolf, hat_s: :drum_cymbal_closed,
+    drum_amp: 0.99, drum_lpf: 122
   }, bars, step, last)
 end
 
 # Loop this image on its own. Change the 8 to play longer phrases.
-live_loop :play_scene_img_5070 do
-  scene_img_5070 8
+live_loop :play_scene_cicado do
+  scene_cicado 8
 end

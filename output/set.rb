@@ -12,15 +12,15 @@
 # hats -> snare -> kick while its melody fades.
 #
 # Running order (edit the list at the bottom to rearrange):
-#    1.  0:00.0  scene_img_5070             blue   E  minor       drums: a soft pulse
-#    2.  0:45.7  scene_img_3175             black  E  minor       drums: steady backbeat
+#    1.  0:00.0  scene_scream_blurr         blue   E  minor       drums: a soft pulse
+#    2.  0:45.7  scene_night                black  E  minor       drums: steady backbeat
 #    3.  1:31.4  scene_kid_grace            brown  A  dorian      drums: driving
-#    4.  2:17.1  scene_line                 green  G  major       drums: very active
-#    5.  3:02.9  scene_img_7668             brown  A  dorian      drums: very active
-#    6.  3:48.6  scene_learning_copy        green  G  major       drums: very active
-#    7.  4:34.3  scene_img_6854             green  G  major       drums: busy, syncopated
+#    4.  2:17.1  scene_dragon               green  G  major       drums: very active
+#    5.  3:02.9  scene_recordlibrary        brown  A  dorian      drums: very active
+#    6.  3:48.6  scene_glitchcore           green  G  major       drums: very active
+#    7.  4:34.3  scene_cicado               green  G  major       drums: busy, syncopated
 #    8.  5:20.0  scene_texture              gray   E  minor       drums: very active
-#    9.  6:05.7  scene_step1                purple A  dorian      drums: driving
+#    9.  6:05.7  scene_audiogram            purple A  dorian      drums: driving
 #   10.  6:51.4  scene_snow_laying          black  E  minor       drums: steady backbeat
 
 # ── the player: shared by every scene ───────────────────────────
@@ -112,14 +112,14 @@ define :play_scene do |s, bars = 8, step = 0, last = false|
   sleep bars * 4
 end
 
-# ── IMG_5070.JPG ────────────────────────────────────────────────
+# ── scream-blurr.JPG ────────────────────────────────────────────
 # colour : blue 47%, gray 19%, black 17%, purple 7%
 #          blue leads -> calm, depth, melancholy -> E minor
 # lines  : sharpness 0.27, density 0.01 -> percussion: a soft pulse
 # light  : brightness 0.38, saturation 0.27
-define :scene_img_5070 do |bars = 8, step = 0, last = false|
+define :scene_scream_blurr do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 380, root: :e3, mode: :minor,
+    bpm: 84, seed: 97050, root: :e3, mode: :minor,
     room: 0.85, reverb: 0.69,
     pad: :hollow, pad_attack: 1.98, cutoff: 77,
     chords: (ring :i, :vii, :iv, :i),
@@ -135,14 +135,14 @@ define :scene_img_5070 do |bars = 8, step = 0, last = false|
   }, bars, step, last)
 end
 
-# ── IMG_3175.jpeg ───────────────────────────────────────────────
+# ── night.jpeg ──────────────────────────────────────────────────
 # colour : black 82%, yellow 13%, orange 4%
 #          black leads -> weight, the unknown -> E minor
 # lines  : sharpness 0.60, density 0.42 -> percussion: steady backbeat
 # light  : brightness 0.16, saturation 0.48
-define :scene_img_3175 do |bars = 8, step = 0, last = false|
+define :scene_night do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 35435, root: :e3, mode: :minor,
+    bpm: 84, seed: 21494, root: :e3, mode: :minor,
     room: 0.74, reverb: 0.56,
     pad: :dark_ambience, pad_attack: 1.35, cutoff: 69,
     chords: (ring :i, :vii, :iv, :i),
@@ -181,14 +181,14 @@ define :scene_kid_grace do |bars = 8, step = 0, last = false|
   }, bars, step, last)
 end
 
-# ── LINE.jpg ────────────────────────────────────────────────────
+# ── dragon.jpg ──────────────────────────────────────────────────
 # colour : white 69%, green 22%, black 8%
 #          green leads -> nature, balance, growth -> G major
 # lines  : sharpness 1.00, density 1.00 -> percussion: very active
 # light  : brightness 0.85, saturation 0.09
-define :scene_line do |bars = 8, step = 0, last = false|
+define :scene_dragon do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 5106, root: :g3, mode: :major,
+    bpm: 84, seed: 86004, root: :g3, mode: :major,
     room: 0.6, reverb: 0.4,
     pad: :hollow, pad_attack: 0.6, cutoff: 96,
     chords: (ring :i, :iv, :i, :v),
@@ -204,14 +204,14 @@ define :scene_line do |bars = 8, step = 0, last = false|
   }, bars, step, last)
 end
 
-# ── IMG_7668.jpeg ───────────────────────────────────────────────
+# ── recordlibrary.jpeg ──────────────────────────────────────────
 # colour : gray 33%, brown 26%, orange 18%, white 12%
 #          brown leads -> earthiness, stability -> A dorian
 # lines  : sharpness 0.94, density 1.00 -> percussion: very active
 # light  : brightness 0.51, saturation 0.19
-define :scene_img_7668 do |bars = 8, step = 0, last = false|
+define :scene_recordlibrary do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 66420, root: :a3, mode: :dorian,
+    bpm: 84, seed: 52288, root: :a3, mode: :dorian,
     room: 0.62, reverb: 0.42,
     pad: :dark_ambience, pad_attack: 0.72, cutoff: 82,
     chords: (ring :i, :iv, :i, :v),
@@ -227,14 +227,14 @@ define :scene_img_7668 do |bars = 8, step = 0, last = false|
   }, bars, step, last)
 end
 
-# ── LEarning copy.jpeg ──────────────────────────────────────────
+# ── glitchcore.jpeg ─────────────────────────────────────────────
 # colour : green 73%, blue 10%, yellow 4%, black 3%
 #          green leads -> nature, balance, growth -> G major
 # lines  : sharpness 0.97, density 1.00 -> percussion: very active
 # light  : brightness 0.40, saturation 0.59
-define :scene_learning_copy do |bars = 8, step = 0, last = false|
+define :scene_glitchcore do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 56457, root: :g3, mode: :major,
+    bpm: 84, seed: 41036, root: :g3, mode: :major,
     room: 0.61, reverb: 0.41,
     pad: :hollow, pad_attack: 0.66, cutoff: 78,
     chords: (ring :i, :iv, :i, :v),
@@ -250,14 +250,14 @@ define :scene_learning_copy do |bars = 8, step = 0, last = false|
   }, bars, step, last)
 end
 
-# ── IMG_6854.jpeg ───────────────────────────────────────────────
+# ── cicado.jpeg ─────────────────────────────────────────────────
 # colour : green 35%, blue 34%, pink 8%, yellow 7%
 #          green leads -> nature, balance, growth -> G major
 # lines  : sharpness 0.85, density 1.00 -> percussion: busy, syncopated
 # light  : brightness 0.52, saturation 0.88
-define :scene_img_6854 do |bars = 8, step = 0, last = false|
+define :scene_cicado do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 31459, root: :g3, mode: :major,
+    bpm: 84, seed: 60569, root: :g3, mode: :major,
     room: 0.65, reverb: 0.46,
     pad: :hollow, pad_attack: 0.88, cutoff: 83,
     chords: (ring :i, :iv, :i, :v),
@@ -296,14 +296,14 @@ define :scene_texture do |bars = 8, step = 0, last = false|
   }, bars, step, last)
 end
 
-# ── step1.png ───────────────────────────────────────────────────
+# ── audiogram.png ───────────────────────────────────────────────
 # colour : black 51%, purple 25%, blue 15%, pink 8%
 #          purple leads -> mystery, dreaminess -> A dorian
 # lines  : sharpness 0.79, density 0.44 -> percussion: driving
 # light  : brightness 0.16, saturation 0.52
-define :scene_step1 do |bars = 8, step = 0, last = false|
+define :scene_audiogram do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 23182, root: :a2, mode: :dorian,
+    bpm: 84, seed: 15396, root: :a2, mode: :dorian,
     room: 0.67, reverb: 0.49,
     pad: :dark_ambience, pad_attack: 1.01, cutoff: 68,
     chords: (ring :i, :vii, :iv, :i),
@@ -349,13 +349,13 @@ end
 # reshape the set; keep `true` on the last line so the ending strips back.
 use_bpm 84
 
-scene_img_5070      16, 2
-scene_img_3175      16, 2
+scene_scream_blurr  16, 2
+scene_night         16, 2
 scene_kid_grace     16, 2
-scene_line          16, 2
-scene_img_7668      16, 2
-scene_learning_copy 16, 2
-scene_img_6854      16, 2
+scene_dragon        16, 2
+scene_recordlibrary 16, 2
+scene_glitchcore    16, 2
+scene_cicado        16, 2
 scene_texture       16, 2
-scene_step1         16, 2
+scene_audiogram     16, 2
 scene_snow_laying   16, 2, true

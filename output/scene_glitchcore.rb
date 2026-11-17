@@ -87,30 +87,30 @@ define :play_scene do |s, bars = 8, step = 0, last = false|
   sleep bars * 4
 end
 
-# ── IMG_3175.jpeg ───────────────────────────────────────────────
-# colour : black 82%, yellow 13%, orange 4%
-#          black leads -> weight, the unknown -> E minor
-# lines  : sharpness 0.60, density 0.42 -> percussion: steady backbeat
-# light  : brightness 0.16, saturation 0.48
-define :scene_img_3175 do |bars = 8, step = 0, last = false|
+# ── glitchcore.jpeg ─────────────────────────────────────────────
+# colour : green 73%, blue 10%, yellow 4%, black 3%
+#          green leads -> nature, balance, growth -> G major
+# lines  : sharpness 0.97, density 1.00 -> percussion: very active
+# light  : brightness 0.40, saturation 0.59
+define :scene_glitchcore do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 35435, root: :e3, mode: :minor,
-    room: 0.74, reverb: 0.56,
-    pad: :dark_ambience, pad_attack: 1.35, cutoff: 69,
-    chords: (ring :i, :vii, :iv, :i),
-    lead: :sine, lead_attack: 0.24, lead_release: 1.36,
-    lead_lpf: 76, lead_amp: 0.35, drone: false,
-    steps: (ring 4, 6, 7, 9, 10, 10, 10, 10, 10, 9, 9, 0, 0, 0, 0, 0),
-    holds: (ring 1, 1, 1, 1, 5, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1),  # steps each note is held, 0 = rest
-    kick:  (ring 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0),
-    snare: (ring 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0),
-    hat:   (ring 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0),
-    kick_s: :bd_haus, snare_s: :sn_dolf, hat_s: :drum_cymbal_closed,
-    drum_amp: 0.71, drum_lpf: 108
+    bpm: 84, seed: 41036, root: :g3, mode: :major,
+    room: 0.61, reverb: 0.41,
+    pad: :hollow, pad_attack: 0.66, cutoff: 78,
+    chords: (ring :i, :iv, :i, :v),
+    lead: :sine, lead_attack: 0.13, lead_release: 0.84,
+    lead_lpf: 82, lead_amp: 0.35, drone: false,
+    steps: (ring 0, 2, 5, 9, 2, 5, 4, 1, 2, 5, 5, 0, 2, 2, 0, 0),
+    holds: (ring 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 0, 2, 0, 0, 0),  # steps each note is held, 0 = rest
+    kick:  (ring 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0),
+    snare: (ring 0, 0, 0, 0, 2, 0, 0, 1, 0, 1, 0, 0, 2, 0, 1, 0),
+    hat:   (ring 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+    kick_s: :bd_tek, snare_s: :sn_dolf, hat_s: :drum_cymbal_closed,
+    drum_amp: 1.08, drum_lpf: 128
   }, bars, step, last)
 end
 
 # Loop this image on its own. Change the 8 to play longer phrases.
-live_loop :play_scene_img_3175 do
-  scene_img_3175 8
+live_loop :play_scene_glitchcore do
+  scene_glitchcore 8
 end

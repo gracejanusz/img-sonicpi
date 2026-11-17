@@ -87,14 +87,14 @@ define :play_scene do |s, bars = 8, step = 0, last = false|
   sleep bars * 4
 end
 
-# ── IMG_7668.jpeg ───────────────────────────────────────────────
+# ── recordlibrary.jpeg ──────────────────────────────────────────
 # colour : gray 33%, brown 26%, orange 18%, white 12%
 #          brown leads -> earthiness, stability -> A dorian
 # lines  : sharpness 0.94, density 1.00 -> percussion: very active
 # light  : brightness 0.51, saturation 0.19
-define :scene_img_7668 do |bars = 8, step = 0, last = false|
+define :scene_recordlibrary do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 66420, root: :a3, mode: :dorian,
+    bpm: 84, seed: 52288, root: :a3, mode: :dorian,
     room: 0.62, reverb: 0.42,
     pad: :dark_ambience, pad_attack: 0.72, cutoff: 82,
     chords: (ring :i, :iv, :i, :v),
@@ -111,6 +111,6 @@ define :scene_img_7668 do |bars = 8, step = 0, last = false|
 end
 
 # Loop this image on its own. Change the 8 to play longer phrases.
-live_loop :play_scene_img_7668 do
-  scene_img_7668 8
+live_loop :play_scene_recordlibrary do
+  scene_recordlibrary 8
 end

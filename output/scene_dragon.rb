@@ -87,30 +87,30 @@ define :play_scene do |s, bars = 8, step = 0, last = false|
   sleep bars * 4
 end
 
-# ── step1.png ───────────────────────────────────────────────────
-# colour : black 51%, purple 25%, blue 15%, pink 8%
-#          purple leads -> mystery, dreaminess -> A dorian
-# lines  : sharpness 0.79, density 0.44 -> percussion: driving
-# light  : brightness 0.16, saturation 0.52
-define :scene_step1 do |bars = 8, step = 0, last = false|
+# ── dragon.jpg ──────────────────────────────────────────────────
+# colour : white 69%, green 22%, black 8%
+#          green leads -> nature, balance, growth -> G major
+# lines  : sharpness 1.00, density 1.00 -> percussion: very active
+# light  : brightness 0.85, saturation 0.09
+define :scene_dragon do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 23182, root: :a2, mode: :dorian,
-    room: 0.67, reverb: 0.49,
-    pad: :dark_ambience, pad_attack: 1.01, cutoff: 68,
-    chords: (ring :i, :vii, :iv, :i),
-    lead: :hollow, lead_attack: 0.18, lead_release: 1.1,
-    lead_lpf: 76, lead_amp: 0.86, drone: false,
-    steps: (ring 0, 0, 6, 6, 7, 6, 3, 4, 6, 6, 6, 4, 0, 6, 4, 0),
-    holds: (ring 0, 0, 2, 0, 1, 1, 1, 1, 3, 0, 0, 1, 0, 1, 1, 0),  # steps each note is held, 0 = rest
-    kick:  (ring 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0),
-    snare: (ring 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0),
-    hat:   (ring 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0),
-    kick_s: :bd_haus, snare_s: :sn_dolf, hat_s: :drum_cymbal_closed,
-    drum_amp: 0.82, drum_lpf: 118
+    bpm: 84, seed: 86004, root: :g3, mode: :major,
+    room: 0.6, reverb: 0.4,
+    pad: :hollow, pad_attack: 0.6, cutoff: 96,
+    chords: (ring :i, :iv, :i, :v),
+    lead: :sine, lead_attack: 0.12, lead_release: 0.8,
+    lead_lpf: 94, lead_amp: 0.29, drone: false,
+    steps: (ring 0, 0, 0, 0, 0, 5, 5, 5, 5, 7, 8, 7, 8, 8, 0, 0),
+    holds: (ring 0, 0, 0, 0, 0, 4, 0, 0, 0, 1, 1, 1, 2, 0, 0, 0),  # steps each note is held, 0 = rest
+    kick:  (ring 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0),
+    snare: (ring 0, 0, 0, 0, 2, 0, 0, 1, 0, 1, 0, 0, 2, 0, 1, 0),
+    hat:   (ring 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+    kick_s: :bd_tek, snare_s: :sn_dolf, hat_s: :drum_cymbal_closed,
+    drum_amp: 1.1, drum_lpf: 130
   }, bars, step, last)
 end
 
 # Loop this image on its own. Change the 8 to play longer phrases.
-live_loop :play_scene_step1 do
-  scene_step1 8
+live_loop :play_scene_dragon do
+  scene_dragon 8
 end

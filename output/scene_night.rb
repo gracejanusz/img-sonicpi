@@ -87,30 +87,30 @@ define :play_scene do |s, bars = 8, step = 0, last = false|
   sleep bars * 4
 end
 
-# ── IMG_2554.jpeg ───────────────────────────────────────────────
-# colour : brown 38%, orange 24%, yellow 11%, black 8%
-#          brown leads -> earthiness, stability -> A dorian
-# lines  : sharpness 0.72, density 0.66 -> percussion: driving
-# light  : brightness 0.45, saturation 0.31
-define :scene_img_2554 do |bars = 8, step = 0, last = false|
+# ── night.jpeg ──────────────────────────────────────────────────
+# colour : black 82%, yellow 13%, orange 4%
+#          black leads -> weight, the unknown -> E minor
+# lines  : sharpness 0.60, density 0.42 -> percussion: steady backbeat
+# light  : brightness 0.16, saturation 0.48
+define :scene_night do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 9726, root: :a3, mode: :dorian,
-    room: 0.7, reverb: 0.51,
-    pad: :dark_ambience, pad_attack: 1.14, cutoff: 80,
-    chords: (ring :i, :iv, :i, :v),
-    lead: :tri, lead_attack: 0.21, lead_release: 1.2,
-    lead_lpf: 84, lead_amp: 0.27, drone: false,
-    steps: (ring 0, 0, 6, 6, 7, 7, 7, 9, 9, 10, 10, 6, 0, 7, 0, 0),
-    holds: (ring 0, 0, 2, 0, 3, 0, 0, 2, 0, 2, 0, 1, 0, 1, 0, 0),  # steps each note is held, 0 = rest
-    kick:  (ring 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0),
+    bpm: 84, seed: 21494, root: :e3, mode: :minor,
+    room: 0.74, reverb: 0.56,
+    pad: :dark_ambience, pad_attack: 1.35, cutoff: 69,
+    chords: (ring :i, :vii, :iv, :i),
+    lead: :sine, lead_attack: 0.24, lead_release: 1.36,
+    lead_lpf: 76, lead_amp: 0.35, drone: false,
+    steps: (ring 4, 6, 7, 9, 10, 10, 10, 10, 10, 9, 9, 0, 0, 0, 0, 0),
+    holds: (ring 1, 1, 1, 1, 5, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1),  # steps each note is held, 0 = rest
+    kick:  (ring 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0),
     snare: (ring 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0),
     hat:   (ring 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0),
     kick_s: :bd_haus, snare_s: :sn_dolf, hat_s: :drum_cymbal_closed,
-    drum_amp: 0.82, drum_lpf: 114
+    drum_amp: 0.71, drum_lpf: 108
   }, bars, step, last)
 end
 
 # Loop this image on its own. Change the 8 to play longer phrases.
-live_loop :play_scene_img_2554 do
-  scene_img_2554 8
+live_loop :play_scene_night do
+  scene_night 8
 end

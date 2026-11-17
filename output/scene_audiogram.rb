@@ -87,30 +87,30 @@ define :play_scene do |s, bars = 8, step = 0, last = false|
   sleep bars * 4
 end
 
-# ── DSC_0145.JPG ────────────────────────────────────────────────
-# colour : black 51%, white 21%, gray 16%, yellow 9%
-#          black leads -> weight, the unknown -> E minor
-# lines  : sharpness 0.60, density 0.21 -> percussion: steady backbeat
-# light  : brightness 0.35, saturation 0.29
-define :scene_dsc_0145 do |bars = 8, step = 0, last = false|
+# ── audiogram.png ───────────────────────────────────────────────
+# colour : black 51%, purple 25%, blue 15%, pink 8%
+#          purple leads -> mystery, dreaminess -> A dorian
+# lines  : sharpness 0.79, density 0.44 -> percussion: driving
+# light  : brightness 0.16, saturation 0.52
+define :scene_audiogram do |bars = 8, step = 0, last = false|
   play_scene({
-    bpm: 84, seed: 42411, root: :e3, mode: :minor,
-    room: 0.74, reverb: 0.56,
-    pad: :dark_ambience, pad_attack: 1.35, cutoff: 76,
+    bpm: 84, seed: 15396, root: :a2, mode: :dorian,
+    room: 0.67, reverb: 0.49,
+    pad: :dark_ambience, pad_attack: 1.01, cutoff: 68,
     chords: (ring :i, :vii, :iv, :i),
-    lead: :sine, lead_attack: 0.24, lead_release: 1.36,
-    lead_lpf: 81, lead_amp: 0.33, drone: false,
-    steps: (ring 10, 9, 0, 9, 7, 3, 3, 0, 10, 0, 3, 0, 2, 0, 0, 0),
-    holds: (ring 1, 1, 0, 1, 1, 2, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0),  # steps each note is held, 0 = rest
-    kick:  (ring 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0),
+    lead: :hollow, lead_attack: 0.18, lead_release: 1.1,
+    lead_lpf: 76, lead_amp: 0.86, drone: false,
+    steps: (ring 0, 0, 6, 6, 7, 6, 3, 4, 6, 6, 6, 4, 0, 6, 4, 0),
+    holds: (ring 0, 0, 2, 0, 1, 1, 1, 1, 3, 0, 0, 1, 0, 1, 1, 0),  # steps each note is held, 0 = rest
+    kick:  (ring 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0),
     snare: (ring 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0),
     hat:   (ring 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0),
     kick_s: :bd_haus, snare_s: :sn_dolf, hat_s: :drum_cymbal_closed,
-    drum_amp: 0.68, drum_lpf: 108
+    drum_amp: 0.82, drum_lpf: 118
   }, bars, step, last)
 end
 
 # Loop this image on its own. Change the 8 to play longer phrases.
-live_loop :play_scene_dsc_0145 do
-  scene_dsc_0145 8
+live_loop :play_scene_audiogram do
+  scene_audiogram 8
 end
