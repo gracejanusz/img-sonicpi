@@ -1,27 +1,37 @@
 #!/usr/bin/env python3
 """
-img2sonic — turn images into Sonic Pi code, and several images into one set.
+img2sonic — turn images into Sonic Pi code, and several images into one live set.
 
-    python img2sonic.py photo.jpg                 -> output/photo.rb   (one block)
-    python img2sonic.py a.jpg b.jpg c.jpg         -> one block each + output/set.rb
-    python img2sonic.py img:/* --bars 12 --order given
+    python img2sonic.py photo.jpg                 -> output/scene_photo.rb
+    python img2sonic.py a.jpg b.jpg c.jpg         -> one file each + output/set.rb
+    python img2sonic.py img:/* --bars 24 --transition 8 --bpm 84 --order given
 
 How the picture becomes music
   COLOUR  -> feeling. Each colour family has an entry in COLOURS below
              (mood, scale, synths, valence, arousal). The strongest colour
-             picks the scale and instruments; the blend of all colours sets
-             tempo and chord progression. Edit COLOURS to change the mapping.
+             picks the scale and pad; the blend of all colours sets the chord
+             progression and tempo. Edit COLOURS to change the mapping.
   LINES   -> percussion. Sharp, definite edges give crisp, busy drums.
-             Blurred / soft edges give little or no percussion, long pads,
+             Blurred / soft edges give little or no percussion, slower pads,
              more reverb and a drone (ambient).
   LIGHT   -> register and filter brightness (dark image = low and muffled).
   SHAPE   -> melody. The image is read left to right in 16 strips; where the
-             detail sits vertically in each strip sets the pitch.
+             detail sits vertically in each strip sets the pitch. Neighbouring
+             strips on the same pitch are tied into one long note.
 
-Every block is a Sonic Pi function (`define :scene_x do |bars, fade| ...`),
-so blocks can be played alone or sequenced. The set file orders the scenes
-into an energy arc (calm -> peak -> calm), puts them on a shared tonic and
-crossfades between them.
+Everything melodic is played on soft pad voices (slow attack, long release,
+low-pass filtered) so the scenes share one vibe.
+
+Every file starts with the same small player (scene_tune, scene_drums,
+play_scene). Each image is then one function holding its settings:
+    scene_x bars, step, last
+
+In a set every scene has the same tempo and the same seven notes (each colour
+keeps its own mode, moved to the relative key), so anything can overlap.
+Scenes are called one after another and each one takes over in stages:
+    old melody fades out, old drums keep going
+    new melody fades in slowly
+    then the hats switch, then the snare, and last the kick
 """
 import argparse
 import colorsys
@@ -42,18 +52,26 @@ from PIL import Image, ImageFilter, ImageOps
 # --------------------------------------------------------------------------
 COLOURS = {
     #          feeling                        valence arousal scale             root  pad             lead
-    "red":    ("passion, urgency, intensity",   0.0,  1.00, "harmonic_minor", "e", "prophet",       "saw"),
-    "orange": ("warmth, enthusiasm",            0.6,  0.75, "mixolydian",     "d", "blade",         "pluck"),
-    "yellow": ("joy, optimism",                 0.9,  0.70, "major",          "c", "blade",         "pretty_bell"),
-    "green":  ("nature, balance, growth",       0.5,  0.35, "major",          "g", "hollow",        "kalimba"),
-    "blue":   ("calm, depth, melancholy",      -0.3,  0.20, "minor",          "a", "hollow",        "piano"),
+    "red":    ("passion, urgency, intensity",   0.0,  1.00, "harmonic_minor", "e", "blade",         "blade"),
+    "orange": ("warmth, enthusiasm",            0.6,  0.75, "mixolydian",     "d", "blade",         "tri"),
+    "yellow": ("joy, optimism",                 0.9,  0.70, "major",          "c", "blade",         "sine"),
+    "green":  ("nature, balance, growth",       0.5,  0.35, "major",          "g", "hollow",        "tri"),
+    "blue":   ("calm, depth, melancholy",      -0.3,  0.20, "minor",          "a", "hollow",        "sine"),
     "purple": ("mystery, dreaminess",           0.0,  0.40, "dorian",         "f", "dark_ambience", "blade"),
-    "pink":   ("tenderness, playfulness",       0.7,  0.45, "major",          "f", "hollow",        "pretty_bell"),
-    "brown":  ("earthiness, stability",         0.1,  0.25, "dorian",         "d", "fm",            "pluck"),
+    "pink":   ("tenderness, playfulness",       0.7,  0.45, "major",          "f", "hollow",        "tri"),
+    "brown":  ("earthiness, stability",         0.1,  0.25, "dorian",         "d", "dark_ambience", "tri"),
     "black":  ("weight, the unknown",          -0.6,  0.30, "harmonic_minor", "c", "dark_ambience", "hollow"),
-    "white":  ("openness, stillness",           0.4,  0.10, "lydian",         "c", "hollow",        "pretty_bell"),
-    "gray":   ("neutrality, distance",         -0.2,  0.15, "minor",          "a", "dark_ambience", "piano"),
+    "white":  ("openness, stillness",           0.4,  0.10, "lydian",         "c", "hollow",        "sine"),
+    "gray":   ("neutrality, distance",         -0.2,  0.15, "minor",          "a", "dark_ambience", "hollow"),
 }
+# Every voice above is a soft one. LEAD_GAIN evens out their loudness and
+# LEAD_SWAP keeps the melody from disappearing into a pad of the same timbre.
+LEAD_GAIN = {"hollow": 1.8, "sine": 0.7, "tri": 0.6, "blade": 0.7}
+LEAD_SWAP = {"hollow": "tri", "blade": "sine", "dark_ambience": "hollow"}
+# Where each mode's tonic sits above its relative major (semitones). Used to
+# put every scene of a set on the same seven notes.
+MODE_OFFSET = {"major": 0, "dorian": 2, "phrygian": 4, "lydian": 5, "mixolydian": 7, "minor": 9}
+NOTE_NAMES = ["c", "cs", "d", "eb", "e", "f", "fs", "g", "ab", "a", "bb", "b"]
 ACHROMATIC = ("black", "white", "gray")
 MINORISH = {"minor", "harmonic_minor", "dorian", "phrygian"}
 PITCH = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
@@ -185,7 +203,9 @@ def drums(a):
 
 def decide(f):
     feeling, _, _, scale, root, pad, _ = COLOURS[f["key"]]
-    lead = COLOURS[f["second"]][6] if f["second"] != f["key"] else COLOURS[f["key"]][6]
+    lead = COLOURS[f["second"]][6]
+    if lead == pad:
+        lead = LEAD_SWAP.get(lead, lead)
     a, sharp = f["activity"], f["sharpness"]
 
     bpm = round((55 + 75 * f["arousal"]) * (0.85 + 0.3 * a))
@@ -193,39 +213,77 @@ def decide(f):
     prog = (["i", "v", "vi", "iv"] if v > 0.4 else ["i", "iv", "i", "v"] if v > 0.1
             else ["i", "vii", "iv", "i"] if v > -0.2 else ["i", "vi", "iii", "vii"])
 
-    # Melody: pentatonic-flavoured degrees of the 7-note scale, over two octaves.
+    # Melody: pentatonic-flavoured degrees of the 7-note scale, about a tenth wide
+    # so it stays in a warm register.
     penta = [0, 2, 3, 4, 6] if scale in MINORISH else [0, 1, 2, 4, 5]
-    ladder = penta + [d + 7 for d in penta]
+    ladder = penta + [d + 7 for d in penta[:3]]
     wt = np.array(f["strip_weight"])
     # Quiet strips become rests; muted, low-energy images rest more.
     rest_below = np.quantile(wt, clamp(0.55 - 0.4 * f["saturation"] - 0.3 * f["arousal"], 0.1, 0.6))
     melody = [ladder[min(len(ladder) - 1, int(c * len(ladder)))] if w >= rest_below else None
               for c, w in zip(f["contour"], wt)]
+    # Tie repeated pitches into one held note: holds[i] = length in steps, 0 = no new note.
+    holds, start = [0] * len(melody), None
+    for i, d in enumerate(melody):
+        if d is None:
+            start = None
+        elif start is not None and melody[start] == d and holds[start] < 8:
+            holds[start] += 1
+        else:
+            start, holds[i] = i, 1
 
     kick, snare, hat, drum_label = drums(a)
     crisp = sharp >= 0.55
     return {
-        "feeling": feeling, "scale": scale, "root": root, "pad": pad, "lead": lead,
-        "bpm": bpm, "prog": prog, "melody": melody,
+        "feeling": feeling, "scale": scale, "root_pc": PITCH[root], "pad": pad, "lead": lead,
+        "bpm": bpm, "prog": prog, "melody": melody, "holds": holds,
         "kick": kick, "snare": snare, "hat": hat, "drum_label": drum_label,
         "kick_s": "bd_tek" if sharp >= 0.8 else "bd_haus" if crisp else "bd_fat",
         "snare_s": "sn_dolf" if crisp else "drum_snare_soft",
         "hat_s": "drum_cymbal_closed" if crisp else "drum_cymbal_soft",
         "drum_amp": round(0.35 + 0.75 * a, 2),
         "drum_lpf": round(75 + 55 * sharp),
-        "octave": 2 if f["brightness"] < 0.35 else 3,
-        "cutoff": round(62 + 58 * f["brightness"]),
-        "reverb": round(0.3 + 0.5 * (1 - sharp), 2),
-        "room": round(0.5 + 0.45 * (1 - sharp), 2),
-        "pad_attack": round(0.1 + 2.4 * (1 - sharp), 2),
-        "lead_release": round(0.3 + 1.5 * (1 - sharp), 2),
-        "lead_amp": round(0.45 + 0.5 * f["saturation"] + 0.2 * f["contrast"], 2),
+        "low": f["brightness"] < 0.35,
+        "cutoff": round(62 + 40 * f["brightness"]),
+        "reverb": round(0.4 + 0.4 * (1 - sharp), 2),
+        "room": round(0.6 + 0.35 * (1 - sharp), 2),
+        "pad_attack": round(0.6 + 1.9 * (1 - sharp), 2),
+        "lead_attack": round(0.12 + 0.3 * (1 - sharp), 2),
+        "lead_release": round(0.8 + 1.4 * (1 - sharp), 2),
+        "lead_lpf": round(72 + 26 * f["brightness"]),
+        "lead_amp": round((0.3 + 0.25 * f["saturation"] + 0.1 * f["contrast"]) * LEAD_GAIN[lead], 2),
         "drone": a < 0.42,
         "energy": 0.5 * a + 0.5 * f["arousal"],
     }
 
 
-# --------------------------------------------------------------------------
+def root_note(m):
+    """Tonic as a Sonic Pi note: G2..F#3 for dark images, C3..B3 for bright ones."""
+    base = 43 if m["low"] else 48
+    midi = base + (m["root_pc"] - base) % 12
+    return f"{NOTE_NAMES[midi % 12]}{midi // 12 - 1}"
+
+
+def share_key(scenes):
+    """Put every scene on the same seven notes. The most common leading colour
+    names the key; every other scene keeps its mode but moves to the relative
+    tonic (G major / A dorian / E minor ...). Harmonic minor becomes natural
+    minor, because its raised 7th is the one note that would clash."""
+    totals = {}
+    for s in scenes:
+        totals[s["f"]["key"]] = totals.get(s["f"]["key"], 0) + 1
+    _, _, _, scale, root, _, _ = COLOURS[max(totals, key=totals.get)]
+    scale = "minor" if scale == "harmonic_minor" else scale
+    parent = (PITCH[root] - MODE_OFFSET[scale]) % 12
+    for s in scenes:
+        m = s["m"]
+        if m["scale"] == "harmonic_minor":
+            m["scale"] = "minor"
+        m["root_pc"] = (parent + MODE_OFFSET[m["scale"]]) % 12
+    return NOTE_NAMES[parent].upper() + " major"
+
+
+# ----# --------------------------------------------------------------------------
 # Sonic Pi code generation
 # --------------------------------------------------------------------------
 def scene_name(path, taken):
@@ -241,96 +299,136 @@ def ring(values):
     return "(ring " + ", ".join("nil" if v is None else str(v) for v in values) + ")"
 
 
-def render_scene(name, f, m, root=None):
-    """One image -> one `define` block. `root` overrides the key (used by sets)."""
-    root = root or m["root"]
+# The player, written once per file. Each image is then only a block of settings
+# (this also keeps set.rb small: Sonic Pi on the web crashes on very long code).
+ENGINE = """\
+# ── the player: shared by every scene ───────────────────────────
+# s is a scene's settings. Fades are in bars.
+define :scene_fade do |vol, bars, fade_in, fade_out|
+  sleep 0.01
+  control vol, amp: 1, amp_slide: fade_in * 4
+  sleep (bars - fade_out) * 4 - 0.01
+  control vol, amp: 0, amp_slide: fade_out * 4 if fade_out > 0
+  sleep fade_out * 4
+end
+
+# pads + melody (+ drone)
+define :scene_tune do |s, bars = 8, fade_in = 0, fade_out = 0|
+  use_bpm s[:bpm]
+  use_random_seed s[:seed]
+  root  = note(s[:root])
+  notes = scale(root + 12, s[:mode], num_octaves: 2)
+  with_fx :level, amp: (fade_in > 0 ? 0 : 1) do |vol|
+    with_fx :reverb, room: s[:room], mix: s[:reverb] do
+      in_thread do  # harmony - colour mood
+        bars.times do |b|
+          synth s[:pad], notes: chord_degree(s[:chords][b], root, s[:mode], 3),
+            attack: s[:pad_attack], sustain: [3.5 - s[:pad_attack], 0.5].max, release: 2,
+            cutoff: s[:cutoff], amp: 0.6
+          sleep 4
+        end
+      end
+      in_thread do  # melody - the image read left to right, on a soft pad voice
+        with_fx :lpf, cutoff: s[:lead_lpf] do
+          (bars * 8).times do |i|
+            if s[:holds][i] > 0
+              synth s[:lead], note: notes[s[:steps][i]], attack: s[:lead_attack],
+                sustain: s[:holds][i] * 0.5 - s[:lead_attack], release: s[:lead_release],
+                amp: s[:lead_amp] * rrand(0.8, 1), pan: rrand(-0.4, 0.4)
+            end
+            sleep 0.5
+          end
+        end
+      end
+      if s[:drone]  # soft lines leave room for air
+        in_thread do
+          (bars / 2.0).ceil.times do
+            synth :dark_ambience, note: root - 12, attack: 3, sustain: 2, release: 3, amp: 0.5
+            sleep 8
+          end
+        end
+      end
+    end
+    scene_fade vol, bars, fade_in, fade_out
+  end
+end
+
+# percussion. part = :high (hats), :mid (snare), :low (kick) or :all
+define :scene_drums do |s, part = :all, bars = 8, fade_in = 0, fade_out = 0|
+  use_bpm s[:bpm]
+  use_random_seed s[:seed]
+  with_fx :level, amp: (fade_in > 0 ? 0 : 1) do |vol|
+    with_fx :lpf, cutoff: s[:drum_lpf] do
+      in_thread do
+        (bars * 16).times do |i|
+          if (part == :all || part == :low) && s[:kick][i] > 0
+            sample s[:kick_s], amp: s[:drum_amp]
+          end
+          if (part == :all || part == :mid) && s[:snare][i] > 0
+            sample s[:snare_s], amp: s[:drum_amp] * (s[:snare][i] == 2 ? 0.9 : 0.35)
+          end
+          if (part == :all || part == :high) && s[:hat][i] > 0
+            sample s[:hat_s], amp: s[:drum_amp] * 0.5 * rrand(0.6, 1), finish: 0.2
+          end
+          sleep 0.25
+        end
+      end
+    end
+    scene_fade vol, bars, fade_in, fade_out
+  end
+end
+
+# a whole scene. step = 0: everything together, no fades (good for looping).
+# step > 0: staged takeover - the melody fades in over 2 steps, then the hats,
+# snare and kick switch one step apart. last: stretch the melody over the ending.
+define :play_scene do |s, bars = 8, step = 0, last = false|
+  use_bpm s[:bpm]
+  xf = step > 0 ? 1 : 0  # drum layers swap over one bar
+  in_thread { scene_tune s, bars + (last ? step * 4 : 0), step * 2, step * 2 }
+  in_thread { sleep step * 8;  scene_drums s, :high, bars + xf, xf, xf }
+  in_thread { sleep step * 12; scene_drums s, :mid,  bars + xf, xf, xf }
+  in_thread { sleep step * 16; scene_drums s, :low,  bars + xf, xf, xf }
+  sleep bars * 4
+end
+"""
+
+
+def render_scene(name, f, m):
+    """One image -> a `define` holding its settings, played by the shared player."""
+    root = root_note(m)
     top = sorted(((p, c) for c, p in f["shares"].items() if p >= 0.03), reverse=True)[:4]
     palette = ", ".join(f"{c} {p:.0%}" for p, c in top)
-    has_drums = any(m["kick"]) or any(m["snare"]) or any(m["hat"])
-    # piano / kalimba / pluck have no filter cutoff opt
-    lead_cutoff = "" if m["lead"] in ("piano", "kalimba", "pluck") else f"cutoff: {min(130, m['cutoff'] + 10)}, "
     L = [
         f"# ── {Path(f['path']).name} " + "─" * max(4, 60 - len(Path(f['path']).name)),
         f"# colour : {palette}",
-        f"#          {f['key']} leads -> {m['feeling']} -> {root.upper()} {m['scale']}, {m['bpm']} bpm",
+        f"#          {f['key']} leads -> {m['feeling']} -> {root[:-1].upper()} {m['scale']}",
         f"# lines  : sharpness {f['sharpness']:.2f}, density {f['density']:.2f}"
         f" -> percussion: {m['drum_label']}",
         f"# light  : brightness {f['brightness']:.2f}, saturation {f['saturation']:.2f}",
-        f"define :{name} do |bars = 8, fade = 1|",
-        f"  use_bpm {m['bpm']}",
-        f"  use_random_seed {f['seed']}",
-        f"  root  = :{root}{m['octave']}",
-        f"  mode  = :{m['scale']}",
-        f"  notes = scale(root + 12, mode, num_octaves: 2)",
-        f"  fade  = [fade, bars / 2.0].min",
-        f"  with_fx :level, amp: (fade > 0 ? 0 : 1), amp_slide: fade * 4 do |vol|",
-        f"    with_fx :reverb, room: {m['room']}, mix: {m['reverb']} do",
-        "",
-        f"      in_thread do  # harmony - colour mood",
-        f"        chords = (ring {', '.join(':' + d for d in m['prog'])})",
-        f"        bars.times do |b|",
-        f"          synth :{m['pad']}, notes: chord_degree(chords[b], root, mode, 3),",
-        f"            attack: {m['pad_attack']}, sustain: {round(max(0.5, 3.5 - m['pad_attack']), 2)}, release: 1.5,",
-        f"            cutoff: {m['cutoff']}, amp: 0.6",
-        f"          sleep 4",
-        f"        end",
-        f"      end",
-        "",
-        f"      in_thread do  # melody - the image read left to right",
-        f"        steps = {ring(m['melody'])}",
-        f"        (bars * 8).times do |i|",
-        f"          d = steps[i]",
-        f"          synth :{m['lead']}, note: notes[d], release: {m['lead_release']},",
-        f"            {lead_cutoff}amp: {m['lead_amp']} * rrand(0.7, 1), pan: rrand(-0.4, 0.4) if d",
-        f"          sleep 0.5",
-        f"        end",
-        f"      end",
-    ]
-    if m["drone"]:
-        L += [
-            "",
-            f"      in_thread do  # drone - soft lines leave room for air",
-            f"        (bars / 2.0).ceil.times do",
-            f"          synth :dark_ambience, note: root - 12, attack: 3, sustain: 2, release: 3, amp: 0.5",
-            f"          sleep 8",
-            f"        end",
-            f"      end",
-        ]
-    L += ["    end"]
-    if has_drums:
-        L += [
-            "",
-            f"    in_thread do  # percussion - line sharpness",
-            f"      kick  = {ring(m['kick'])}",
-            f"      snare = {ring(m['snare'])}",
-            f"      hat   = {ring(m['hat'])}",
-            f"      with_fx :lpf, cutoff: {m['drum_lpf']} do",
-            f"        (bars * 16).times do |i|",
-            f"          sample :{m['kick_s']}, amp: {m['drum_amp']} if kick[i] > 0",
-            f"          sample :{m['snare_s']}, amp: {m['drum_amp']} * (snare[i] == 2 ? 0.9 : 0.35) if snare[i] > 0",
-            f"          sample :{m['hat_s']}, amp: {round(m['drum_amp'] * 0.5, 2)} * rrand(0.6, 1), finish: 0.2 if hat[i] > 0",
-            f"          sleep 0.25",
-            f"        end",
-            f"      end",
-            f"    end",
-        ]
-    L += [
-        "",
-        "    # fade in, hold, fade out",
-        "    sleep 0.01",
-        "    control vol, amp: 1",
-        "    sleep (bars - fade) * 4 - 0.01",
-        "    control vol, amp: 0",
-        "    sleep fade * 4",
-        "  end",
-        "end",
+        f"define :{name} do |bars = 8, step = 0, last = false|",
+        f"  play_scene({{",
+        f"    bpm: {m['bpm']}, seed: {f['seed']}, root: :{root}, mode: :{m['scale']},",
+        f"    room: {m['room']}, reverb: {m['reverb']},",
+        f"    pad: :{m['pad']}, pad_attack: {m['pad_attack']}, cutoff: {m['cutoff']},",
+        f"    chords: (ring {', '.join(':' + d for d in m['prog'])}),",
+        f"    lead: :{m['lead']}, lead_attack: {m['lead_attack']}, lead_release: {m['lead_release']},",
+        f"    lead_lpf: {m['lead_lpf']}, lead_amp: {m['lead_amp']}, drone: {'true' if m['drone'] else 'false'},",
+        f"    steps: {ring(0 if d is None else d for d in m['melody'])},",
+        f"    holds: {ring(m['holds'])},  # steps each note is held, 0 = rest",
+        f"    kick:  {ring(m['kick'])},",
+        f"    snare: {ring(m['snare'])},",
+        f"    hat:   {ring(m['hat'])},",
+        f"    kick_s: :{m['kick_s']}, snare_s: :{m['snare_s']}, hat_s: :{m['hat_s']},",
+        f"    drum_amp: {m['drum_amp']}, drum_lpf: {m['drum_lpf']}",
+        f"  }}, bars, step, last)",
+        f"end",
     ]
     return "\n".join(L)
 
 
 def render_single(name, block):
-    return (f"{block}\n\n# Loop this image on its own. Change the 8 to play longer phrases.\n"
-            f"live_loop :play_{name} do\n  {name} 8, 0\nend\n")
+    return (f"{ENGINE}\n{block}\n\n# Loop this image on its own. Change the 8 to play longer phrases.\n"
+            f"live_loop :play_{name} do\n  {name} 8\nend\n")
 
 
 def arc_order(scenes):
@@ -340,49 +438,64 @@ def arc_order(scenes):
     return rise + fall[::-1] if len(scenes) > 2 else by_energy
 
 
-def render_set(scenes, bars, order):
+def clock(bar, bpm):
+    secs = bar * 240 / bpm
+    return f"{secs // 60:.0f}:{secs % 60:04.1f}"
+
+
+def render_set(scenes, bars, step, key_name, order):
     if order == "arc":
         scenes = arc_order(scenes)
-    # Shared tonic: the leading colour across every image. Modes still change per scene.
-    totals = {}
-    for s in scenes:
-        totals[s["f"]["key"]] = totals.get(s["f"]["key"], 0) + 1
-    root = COLOURS[max(totals, key=totals.get)][4]
-
+    bpm = scenes[0]["m"]["bpm"]
+    end = len(scenes) * bars + step * 4
     out = [
-        "# ═══ Performance set " + "═" * 50,
-        f"# {len(scenes)} images, {bars} bars each, shared tonic {root.upper()}, 1-bar crossfades.",
+        "# ═══ Live set " + "═" * 57,
+        f"# {len(scenes)} images, {bpm} bpm throughout, all on the notes of {key_name}.",
+        f"# {bars} bars per scene, about {clock(end, bpm)} in total.",
+        "#",
+        f"# How one scene hands over to the next (bars counted from the new scene's start):",
+        f"#   -{step * 2:<3} old melody starts fading out, old drums keep going",
+        f"#    0   new melody starts fading in ({step * 2} bars)",
+        f"#   +{step * 2:<3} hats switch to the new scene",
+        f"#   +{step * 3:<3} snare switches",
+        f"#   +{step * 4:<3} kick switches - the new scene has fully arrived",
+        "# The first scene builds up the same way and the last one strips back",
+        "# hats -> snare -> kick while its melody fades.",
+        "#",
         "# Running order (edit the list at the bottom to rearrange):",
     ]
-    total = 0.0
-    for i, s in enumerate(scenes, 1):
-        secs = bars * 4 * 60 / s["m"]["bpm"]
-        out.append(f"#   {i}. {total // 60:.0f}:{total % 60:04.1f}  {s['name']:<28} {s['m']['bpm']:>3} bpm  "
-                   f"{s['f']['key']:<7} drums: {s['m']['drum_label']}")
-        total += secs - 4 * 60 / s["m"]["bpm"]
-    out.append("")
+    for i, s in enumerate(scenes):
+        out.append(f"#   {i + 1:>2}. {clock(i * bars, bpm):>7}  {s['name']:<26} {s['f']['key']:<7}"
+                   f"{root_note(s['m'])[:-1].upper():<3}{s['m']['scale']:<11} drums: {s['m']['drum_label']}")
+    out += ["", ENGINE]
     for s in scenes:
-        out += [render_scene(s["name"], s["f"], s["m"], root), ""]
+        out += [render_scene(s["name"], s["f"], s["m"]), ""]
     out += [
         "# ── running order ──────────────────────────────────────────────",
-        "# Each scene is called as: name bars, fade_bars. The sleep is the scene's",
-        "# length in seconds minus its last bar, so the next one fades in over it.",
-        "# Reorder, repeat or delete pairs of lines to reshape the set.",
-        "use_bpm 60",
+        "# Each line is: name bars, step. `bars` is how long the scene lasts, `step`",
+        "# is the pace of the handover (melody fades take 2 steps, then hats, snare",
+        "# and kick switch one step apart). Reorder, repeat or delete lines to",
+        "# reshape the set; keep `true` on the last line so the ending strips back.",
+        f"use_bpm {bpm}",
         "",
     ]
-    for s in scenes:
-        bar_secs = 4 * 60 / s["m"]["bpm"]
-        out += [f"in_thread {{ {s['name']} {bars}, 1 }}", f"sleep {round((bars - 1) * bar_secs, 2)}", ""]
-    return "\n".join(out)
+    width = max(len(s["name"]) for s in scenes)
+    for i, s in enumerate(scenes):
+        out.append(f"{s['name']:<{width}} {bars}, {step}" + (", true" if i == len(scenes) - 1 else ""))
+    return "\n".join(out) + "\n"
 
 
 # --------------------------------------------------------------------------
 def main():
-    ap = argparse.ArgumentParser(description="Images -> Sonic Pi code / performance set")
+    ap = argparse.ArgumentParser(description="Images -> Sonic Pi code / live set")
     ap.add_argument("images", nargs="+", type=Path)
     ap.add_argument("-o", "--out", type=Path, default=Path("output"))
-    ap.add_argument("--bars", type=int, default=8, help="bars per scene in the set (default 8)")
+    ap.add_argument("--bars", type=int, default=16, help="bars per scene in the set (default 16)")
+    ap.add_argument("--transition", type=int, default=None,
+                    help="bars from the new melody starting until its kick has taken over "
+                         "(multiple of 4, default: half of --bars)")
+    ap.add_argument("--bpm", type=int, default=None,
+                    help="tempo for every scene (default: the median of what the images suggest)")
     ap.add_argument("--order", choices=("arc", "given"), default="arc",
                     help="set order: energy arc (default) or the order given on the command line")
     args = ap.parse_args()
@@ -395,20 +508,31 @@ def main():
         except Exception as e:  # not an image, unreadable, ...
             print(f"skip {path}: {e}", file=sys.stderr)
             continue
-        m = decide(f)
-        name = scene_name(path, taken)
-        dest = args.out / f"{name}.rb"
-        dest.write_text(render_single(name, render_scene(name, f, m)))
-        scenes.append({"name": name, "f": f, "m": m})
-        print(f"{Path(path).name:<22} {f['key']:<7} {m['root'].upper()} {m['scale']:<15} {m['bpm']:>3} bpm  "
-              f"sharp {f['sharpness']:.2f} dens {f['density']:.2f} -> {m['drum_label']:<20} {dest}")
-
+        scenes.append({"name": scene_name(path, taken), "f": f, "m": decide(f)})
     if not scenes:
         sys.exit("no readable images")
+
+    # One tempo and one set of notes for everything, so scenes can overlap.
+    bpm = args.bpm or round(float(np.median([s["m"]["bpm"] for s in scenes])))
+    for s in scenes:
+        s["m"]["bpm"] = bpm
+    key_name = share_key(scenes) if len(scenes) > 1 else None
+
+    for s in scenes:
+        f, m = s["f"], s["m"]
+        dest = args.out / f"{s['name']}.rb"
+        dest.write_text(render_single(s["name"], render_scene(s["name"], f, m)))
+        print(f"{Path(f['path']).name:<22} {f['key']:<7} {root_note(m)[:-1].upper():<2} {m['scale']:<11} "
+              f"pad {m['pad']:<13} lead {m['lead']:<7} sharp {f['sharpness']:.2f} -> {m['drum_label']:<20} {dest}")
+
     if len(scenes) > 1:
+        bars = max(4, args.bars)
+        transition = args.transition if args.transition is not None else bars // 2
+        step = max(1, min(transition, bars) // 4)
         dest = args.out / "set.rb"
-        dest.write_text(render_set(scenes, args.bars, args.order))
-        print(f"\nset: {dest}\nIn Sonic Pi, run:  run_file \"{dest.resolve()}\"")
+        dest.write_text(render_set(scenes, bars, step, key_name, args.order))
+        print(f"\n{bpm} bpm, {key_name}, {bars} bars per scene, {step * 4}-bar handover"
+              f"\nset: {dest}\nIn Sonic Pi, run:  run_file \"{dest.resolve()}\"")
 
 
 if __name__ == "__main__":
